@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BTPL Final Test Report</title>
+<style>
+  :root{--blue:#1a56db;--dark:#111827;--gray:#6b7280;--border:#d1d5db;--red:#dc2626;--green:#059669;--bg:#f3f4f6;}
+  *{box-sizing:border-box;}
+  body{font-family:Arial,Helvetica,sans-serif;background:var(--bg);margin:0;color:var(--dark);}
+  .container{max-width:480px;margin:0 auto;padding:16px;min-height:100vh;background:#fff;}
+  h1{font-size:18px;text-align:center;margin:8px 0 20px;}
+  .card{border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;}
+  label{display:block;font-size:13px;font-weight:bold;margin-bottom:4px;color:var(--gray);}
+  input,select{width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:15px;margin-bottom:12px;}
+  input[readonly]{background:#f3f4f6;color:var(--gray);}
+  button{width:100%;padding:13px;border:none;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;margin-bottom:10px;}
+  .btn-primary{background:var(--blue);color:#fff;}
+  .btn-secondary{background:#e5e7eb;color:var(--dark);}
+  .btn-danger{background:var(--red);color:#fff;}
+  .btn-green{background:var(--green);color:#fff;}
+  .row2{display:flex;gap:10px;}
+  .row2 button{flex:1;}
+  .hidden{display:none !important;}
+  .stat-grid{display:flex;gap:10px;margin-bottom:10px;}
+  .stat{flex:1;text-align:center;background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:10px;}
+  .stat .num{font-size:22px;font-weight:bold;}
+  .stat.ok .num{color:var(--green);}
+  .stat.faulty .num{color:var(--red);}
+  #scanInput{border:2px solid var(--blue);font-size:18px;text-align:center;}
+  .toast{position:fixed;left:16px;right:16px;bottom:20px;padding:14px;border-radius:8px;color:#fff;font-weight:bold;text-align:center;z-index:999;}
+  .toast.err{background:var(--red);}
+  .toast.ok{background:var(--green);}
+  table.grid{width:100%;border-collapse:collapse;font-size:11px;}
+  table.grid td,table.grid th{border:1px solid #999;padding:3px 4px;text-align:center;}
+  table.grid th{background:#e5e7eb;}
+  .preview-title{text-align:center;font-weight:bold;font-size:18px;margin-bottom:6px;}
+  .preview-field{display:flex;justify-content:space-between;font-size:13px;border-bottom:1px solid #ddd;padding:4px 0;}
+  .prod-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+  .prod-row input{margin-bottom:0;}
+  .small{font-size:12px;color:var(--gray);}
+  .top-actions{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .link{color:var(--blue);font-size:13px;cursor:pointer;}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ===== LOGIN / ROLE SELECT ===== -->
+  <div id="screen-role">
+    <h1>BTPL Final Test Report</h1>
+    <div class="card">
+      <button class="btn-primary" onclick="goUser()">Start Testing (User)</button>
+      <button class="btn-secondary" onclick="showAdminLogin()">Admin Login</button>
+    </div>
+  </div>
+
+  <div id="screen-adminLogin" class="hidden">
+    <h1>Admin Login</h1>
+    <div class="card">
+      <label>Password</label>
+      <input type="password" id="adminPassInput">
+      <button class="btn-primary" onclick="doAdminLogin()">Login</button>
+      <button class="btn-secondary" onclick="backToRole()">Back</button>
+    </div>
+  </div>
+
+  <!-- ===== ADMIN PANEL ===== -->
+  <div id="screen-admin" class="hidden">
+    <div class="top-actions">
+      <h1 style="margin:0">Admin Panel</h1>
+      <span class="link" onclick="backToRole()">Logout</span>
+    </div>
+    <div class="card">
+      <label>Products (Name + Barcode Short Form)</label>
+      <div id="prodList"></div>
+      <button class="btn-secondary" onclick="addProdRow()">+ Add Product</button>
+      <button class="btn-primary" onclick="saveAdminConfig()">Save Product List</button>
+    </div>
+    <div class="card">
+      <label>Change Admin Password</label>
+      <input type="password" id="oldPass" placeholder="Old password">
+      <input type="password" id="newPass" placeholder="New password">
+      <button class="btn-secondary" onclick="doChangePassword()">Update Password</button>
+    </div>
+  </div>
+
+  <!-- ===== USER: SETUP ===== -->
+  <div id="screen-setup" class="hidden">
+    <div class="top-actions">
+      <h1 style="margin:0">New Test Report</h1>
+      <span class="link" onclick="backToRole()">Exit</span>
+    </div>
+    <div class="card">
+      <label>Product Name</label>
+      <select id="productSelect"></select>
+      <label>Date</label>
+      <input type="text" id="dateField" readonly>
+      <label>Testing Operator Name</label>
+      <input type="text" id="opName" placeholder="Enter name">
+      <label>Testing Operator Code</label>
+      <input type="text" id="opCode" placeholder="Enter code">
+      <button class="btn-primary" onclick="startScanningSession()">Start Scanning</button>
+    </div>
+  </div>
+
+  <!-- ===== USER: SCANNING ===== -->
+  <div id="screen-scan" class="hidden">
+    <div class="top-actions">
+      <h1 style="margin:0">Scanning</h1>
+      <span class="link" onclick="cancelSession()">Cancel</span>
+    </div>
+    <div class="stat-grid">
+      <div class="stat ok"><div class="num" id="okCount">0</div><div class="small">Tested OK</div></div>
+      <div class="stat faulty"><div class="num" id="faultyDisplay">0</div><div class="small">Faulty</div></div>
+    </div>
+    <div class="card" style="margin-top:0">
+      <label>Scan Barcode (USB Scanner)</label>
+      <input type="text" id="scanInput" placeholder="Tap here, then scan" autocomplete="off" autofocus>
+      <p class="small" id="scanHint">Ready to scan...</p>
+    </div>
+    <div class="card" style="margin-top:0">
+      <label>Faulty Qty (manual)</label>
+      <input type="number" id="faultyInput" value="0" min="0" oninput="document.getElementById('faultyDisplay').innerText=this.value||0">
+      <button class="btn-green" onclick="finishScanning()">Finish &amp; Preview</button>
+    </div>
+    <div class="card">
+      <label class="small">Last scanned barcodes</label>
+      <div id="recentList" style="font-size:12px;max-height:120px;overflow:auto;"></div>
+    </div>
+  </div>
+
+  <!-- ===== PREVIEW ===== -->
+  <div id="screen-preview" class="hidden">
+    <div class="top-actions">
+      <h1 style="margin:0">Preview</h1>
+      <span class="link" onclick="backToScan()">Back to Scan</span>
+    </div>
+    <div class="card" style="overflow:auto">
+      <div class="preview-title">FINAL TESTING REPORT</div>
+      <div class="preview-field"><span>PRODUCT NAME</span><b id="pv-product"></b></div>
+      <div class="preview-field"><span>DATE</span><b id="pv-date"></b></div>
+      <div class="preview-field"><span>START TIME</span><b id="pv-start"></b></div>
+      <div class="preview-field"><span>END TIME</span><b id="pv-end"></b></div>
+      <div class="preview-field"><span>OPERATOR NAME</span><b id="pv-opname"></b></div>
+      <div class="preview-field"><span>OPERATOR CODE</span><b id="pv-opcode"></b></div>
+      <div class="preview-field"><span>TESTED OK QTY</span><b id="pv-ok"></b></div>
+      <div class="preview-field"><span>FAILED QTY</span><b id="pv-faulty"></b></div>
+      <div style="margin-top:10px;overflow:auto">
+        <table class="grid" id="pv-grid"></table>
+      </div>
+    </div>
+    <button class="btn-primary" id="submitBtn" onclick="submitReport()">Submit &amp; Save PDF</button>
+    <button class="btn-secondary" onclick="backToScan()">Edit / Rescan</button>
+  </div>
+
+  <div id="screen-done" class="hidden">
+    <h1>Submitted ✅</h1>
+    <div class="card">
+      <p>Report saved to Google Drive.</p>
+      <p id="doneLink"></p>
+      <button class="btn-primary" onclick="location.reload()">New Report</button>
+    </div>
+  </div>
+
+</div>
+<div id="toast" class="toast hidden"></div>
+
+<script>
+/* ======== CONFIG ======== */
+const BACKEND_URL = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
+
+let PRODUCTS = [];
+let session = null; // {product, shortForm, opName, opCode, date, startTime, barcodes:[], nextSl:1}
+let adminPassword = null;
+
+/* ======== UTIL ======== */
+function toast(msg, type){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast ' + (type||'ok');
+  t.classList.remove('hidden');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>t.classList.add('hidden'), 2200);
+}
+function show(id){
+  ['screen-role','screen-adminLogin','screen-admin','screen-setup','screen-scan','screen-preview','screen-done']
+    .forEach(s=>document.getElementById(s).classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+function todayStr(){
+  const d = new Date();
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  return dd+'-'+mm+'-'+d.getFullYear();
+}
+function timeStr(){
+  const d = new Date();
+  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');
+}
+async function api(action, payload){
+  const res = await fetch(BACKEND_URL, {
+    method:'POST',
+    body: JSON.stringify(Object.assign({action}, payload||{}))
+  });
+  return res.json();
+}
+async function loadConfig(){
+  try{
+    const res = await fetch(BACKEND_URL + '?action=getConfig');
+    const data = await res.json();
+    if(data.success) PRODUCTS = data.products;
+  }catch(e){ toast('Could not load product list. Check backend URL.', 'err'); }
+}
+loadConfig();
+
+/* ======== ROLE SCREENS ======== */
+function backToRole(){ show('screen-role'); }
+function showAdminLogin(){ show('screen-adminLogin'); }
+async function doAdminLogin(){
+  const pass = document.getElementById('adminPassInput').value;
+  const r = await api('adminLogin', {password: pass});
+  if(r.success){ adminPassword = pass; renderAdmin(); show('screen-admin'); }
+  else toast('Wrong password', 'err');
+}
+function goUser(){
+  const sel = document.getElementById('productSelect');
+  sel.innerHTML = PRODUCTS.map(p=>`<option value="${p.name}" data-sf="${p.shortForm}">${p.name}</option>`).join('');
+  document.getElementById('dateField').value = todayStr();
+  document.getElementById('opName').value='';
+  document.getElementById('opCode').value='';
+  show('screen-setup');
+}
+
+/* ======== ADMIN PANEL ======== */
+function renderAdmin(){
+  const wrap = document.getElementById('prodList');
+  wrap.innerHTML = '';
+  PRODUCTS.forEach((p,i)=>addProdRow(p.name, p.shortForm));
+  if(PRODUCTS.length===0) addProdRow();
+}
+function addProdRow(name, shortForm){
+  const wrap = document.getElementById('prodList');
+  const row = document.createElement('div');
+  row.className = 'prod-row';
+  row.innerHTML = `<input placeholder="Product name" value="${name||''}" class="pname">
+                    <input placeholder="Short form e.g. RO" value="${shortForm||''}" class="pshort" style="max-width:100px">
+                    <span class="link" onclick="this.parentElement.remove()">✕</span>`;
+  wrap.appendChild(row);
+}
+async function saveAdminConfig(){
+  const rows = document.querySelectorAll('#prodList .prod-row');
+  const products = [];
+  rows.forEach(r=>{
+    const name = r.querySelector('.pname').value.trim();
+    const sf = r.querySelector('.pshort').value.trim().toUpperCase();
+    if(name) products.push({name, shortForm: sf});
+  });
+  const r = await api('saveConfig', {password: adminPassword, products});
+  if(r.success){ PRODUCTS = products; toast('Saved'); }
+  else toast(r.error || 'Failed', 'err');
+}
+async function doChangePassword(){
+  const oldPass = document.getElementById('oldPass').value;
+  const newPass = document.getElementById('newPass').value;
+  const r = await api('changePassword', {oldPassword: oldPass, newPassword: newPass});
+  if(r.success){ adminPassword = newPass; toast('Password updated'); }
+  else toast(r.error || 'Failed', 'err');
+}
+
+/* ======== SESSION / SCANNING ======== */
+function startScanningSession(){
+  const sel = document.getElementById('productSelect');
+  const opt = sel.options[sel.selectedIndex];
+  if(!opt){ toast('Add products first (Admin panel)', 'err'); return; }
+  const opName = document.getElementById('opName').value.trim();
+  const opCode = document.getElementById('opCode').value.trim();
+  if(!opName || !opCode){ toast('Enter operator name & code', 'err'); return; }
+
+  session = {
+    product: opt.value,
+    shortForm: opt.getAttribute('data-sf').toUpperCase(),
+    opName, opCode,
+    date: document.getElementById('dateField').value,
+    startTime: timeStr(),
+    endTime: null,
+    barcodes: [],   // {slNo, barcode}
+    scannedSet: new Set(),
+    nextSl: 1
+  };
+  document.getElementById('okCount').innerText = '0';
+  document.getElementById('faultyInput').value = '0';
+  document.getElementById('faultyDisplay').innerText = '0';
+  document.getElementById('recentList').innerHTML = '';
+  show('screen-scan');
+  focusScanInput();
+}
+function cancelSession(){ session=null; backToRole(); }
+
+function focusScanInput(){
+  const el = document.getElementById('scanInput');
+  el.value = '';
+  setTimeout(()=>el.focus(), 100);
+}
+
+function handleScan(raw){
+  const code = (raw||'').trim();
+  if(!code) return;
+
+  if(!code.toUpperCase().startsWith(session.shortForm)){
+    toast('Wrong product! Expected "' + session.shortForm + '" barcodes', 'err');
+    flashHint('Wrong product barcode!', 'err');
+    return;
+  }
+  if(session.scannedSet.has(code)){
+    toast('Already scanned: ' + code, 'err');
+    flashHint('Duplicate — already scanned!', 'err');
+    return;
+  }
+  session.scannedSet.add(code);
+  session.barcodes.push({slNo: session.nextSl, barcode: code});
+  session.nextSl++;
+  document.getElementById('okCount').innerText = session.barcodes.length;
+  toast('Scanned OK: ' + code, 'ok');
+  flashHint('Scanned OK ✓ — next barcode...', 'ok');
+
+  const list = document.getElementById('recentList');
+  const div = document.createElement('div');
+  div.textContent = session.barcodes.length + '. ' + code;
+  list.prepend(div);
+}
+function flashHint(msg, type){
+  const hint = document.getElementById('scanHint');
+  hint.textContent = msg;
+  hint.style.color = type==='err' ? 'var(--red)' : 'var(--green)';
+  clearTimeout(hint._t);
+  hint._t = setTimeout(()=>{ hint.textContent='Ready to scan...'; hint.style.color='var(--gray)'; }, 1500);
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  const el = document.getElementById('scanInput');
+  el.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      const val = el.value;
+      el.value = '';
+      handleScan(val);
+    }
+  });
+});
+
+function finishScanning(){
+  if(session.barcodes.length === 0){
+    if(!confirm('No barcodes scanned yet. Continue to preview anyway?')) return;
+  }
+  session.endTime = timeStr();
+  session.faultyQty = parseInt(document.getElementById('faultyInput').value || '0', 10);
+  renderPreview();
+  show('screen-preview');
+}
+function backToScan(){ show('screen-scan'); focusScanInput(); }
+
+/* ======== PREVIEW ======== */
+function renderPreview(){
+  document.getElementById('pv-product').innerText = session.product;
+  document.getElementById('pv-date').innerText = session.date;
+  document.getElementById('pv-start').innerText = session.startTime;
+  document.getElementById('pv-end').innerText = session.endTime;
+  document.getElementById('pv-opname').innerText = session.opName;
+  document.getElementById('pv-opcode').innerText = session.opCode;
+  document.getElementById('pv-ok').innerText = session.barcodes.length;
+  document.getElementById('pv-faulty').innerText = session.faultyQty;
+
+  const map = {};
+  session.barcodes.forEach(b=> map[b.slNo] = b.barcode);
+  let html = '<tr><th>SL</th><th>BARCODE</th><th>SL</th><th>BARCODE</th><th>SL</th><th>BARCODE</th><th>SL</th><th>BARCODE</th><th>SL</th><th>BARCODE</th></tr>';
+  for(let i=0;i<40;i++){
+    html += '<tr>';
+    for(let b=0;b<5;b++){
+      const sl = b*40 + i + 1;
+      html += `<td>${sl}</td><td>${map[sl]||''}</td>`;
+    }
+    html += '</tr>';
+  }
+  document.getElementById('pv-grid').innerHTML = html;
+}
+
+/* ======== SUBMIT ======== */
+async function submitReport(){
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true; btn.innerText = 'Saving...';
+  const payload = {
+    productName: session.product,
+    date: session.date,
+    startTime: session.startTime,
+    endTime: session.endTime,
+    operatorName: session.opName,
+    operatorCode: session.opCode,
+    testedOkQty: session.barcodes.length,
+    faultyQty: session.faultyQty,
+    barcodes: session.barcodes
+  };
+  try{
+    const r = await api('submitReport', payload);
+    if(r.success){
+      document.getElementById('doneLink').innerHTML = '<a href="'+r.fileUrl+'" target="_blank">Open PDF in Drive</a>';
+      show('screen-done');
+    } else {
+      toast('Failed: ' + r.error, 'err');
+      btn.disabled = false; btn.innerText = 'Submit & Save PDF';
+    }
+  }catch(e){
+    toast('Network error: ' + e.message, 'err');
+    btn.disabled = false; btn.innerText = 'Submit & Save PDF';
+  }
+}
+</script>
+</body>
+</html>
