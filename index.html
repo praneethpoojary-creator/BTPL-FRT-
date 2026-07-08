@@ -37,7 +37,8 @@
   .preview-title{text-align:center;font-weight:bold;font-size:18px;margin-bottom:6px;}
   .preview-field{display:flex;justify-content:space-between;font-size:13px;border-bottom:1px solid #ddd;padding:4px 0;}
   .prod-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
-  .prod-row input{margin-bottom:0;}
+  .prod-row input,.prod-row select{margin-bottom:0;}
+  .prod-row-block{border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:10px;}
   .small{font-size:12px;color:var(--gray);}
   .top-actions{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
   .link{color:var(--blue);font-size:13px;cursor:pointer;}
@@ -224,7 +225,7 @@ async function doAdminLogin(){
 }
 function goUser(){
   const sel = document.getElementById('productSelect');
-  sel.innerHTML = PRODUCTS.map(p=>`<option value="${p.name}" data-sf="${p.shortForm}">${p.name}</option>`).join('');
+  sel.innerHTML = PRODUCTS.map(p=>`<option value="${p.name}" data-sf="${p.shortForm}" data-match="${p.matchType||'contains'}" data-pos="${p.position||''}">${p.name}</option>`).join('');
   document.getElementById('dateField').value = todayStr();
   document.getElementById('opName').value='';
   document.getElementById('opCode').value='';
@@ -235,25 +236,44 @@ function goUser(){
 function renderAdmin(){
   const wrap = document.getElementById('prodList');
   wrap.innerHTML = '';
-  PRODUCTS.forEach((p,i)=>addProdRow(p.name, p.shortForm));
+  PRODUCTS.forEach((p)=>addProdRow(p.name, p.shortForm, p.matchType, p.position));
   if(PRODUCTS.length===0) addProdRow();
 }
-function addProdRow(name, shortForm){
+function addProdRow(name, shortForm, matchType, position){
   const wrap = document.getElementById('prodList');
   const row = document.createElement('div');
-  row.className = 'prod-row';
-  row.innerHTML = `<input placeholder="Product name" value="${name||''}" class="pname">
-                    <input placeholder="Short form e.g. RO" value="${shortForm||''}" class="pshort" style="max-width:100px">
-                    <span class="link" onclick="this.parentElement.remove()">✕</span>`;
+  row.className = 'prod-row-block';
+  matchType = matchType || 'contains';
+  row.innerHTML = `
+    <div class="prod-row">
+      <input placeholder="Product name" value="${name||''}" class="pname">
+      <input placeholder="Short form e.g. MI" value="${shortForm||''}" class="pshort" style="max-width:90px">
+      <span class="link" onclick="this.closest('.prod-row-block').remove()">✕</span>
+    </div>
+    <div class="prod-row" style="margin-top:-4px">
+      <select class="pmatch" onchange="togglePosInput(this)" style="margin-bottom:8px">
+        <option value="contains" ${matchType==='contains'?'selected':''}>Contains anywhere</option>
+        <option value="startswith" ${matchType==='startswith'?'selected':''}>Starts with</option>
+        <option value="position" ${matchType==='position'?'selected':''}>Exact position</option>
+      </select>
+      <input type="number" class="pposition" placeholder="Pos (e.g. 3)" min="1" value="${position||''}"
+        style="max-width:90px;${matchType==='position'?'':'display:none'}">
+    </div>`;
   wrap.appendChild(row);
 }
+function togglePosInput(sel){
+  const posInput = sel.closest('.prod-row-block').querySelector('.pposition');
+  posInput.style.display = sel.value === 'position' ? 'block' : 'none';
+}
 async function saveAdminConfig(){
-  const rows = document.querySelectorAll('#prodList .prod-row');
+  const blocks = document.querySelectorAll('#prodList .prod-row-block');
   const products = [];
-  rows.forEach(r=>{
-    const name = r.querySelector('.pname').value.trim();
-    const sf = r.querySelector('.pshort').value.trim().toUpperCase();
-    if(name) products.push({name, shortForm: sf});
+  blocks.forEach(b=>{
+    const name = b.querySelector('.pname').value.trim();
+    const sf = b.querySelector('.pshort').value.trim().toUpperCase();
+    const matchType = b.querySelector('.pmatch').value;
+    const position = b.querySelector('.pposition').value.trim();
+    if(name) products.push({name, shortForm: sf, matchType, position: position ? parseInt(position,10) : null});
   });
   const r = await api('saveConfig', {password: adminPassword, products});
   if(r.success){ PRODUCTS = products; toast('Saved'); }
@@ -279,6 +299,8 @@ function startScanningSession(){
   session = {
     product: opt.value,
     shortForm: opt.getAttribute('data-sf').toUpperCase(),
+    matchType: opt.getAttribute('data-match') || 'contains',
+    position: opt.getAttribute('data-pos') ? parseInt(opt.getAttribute('data-pos'), 10) : null,
     opName, opCode,
     date: document.getElementById('dateField').value,
     startTime: timeStr(),
@@ -302,12 +324,24 @@ function focusScanInput(){
   setTimeout(()=>el.focus(), 100);
 }
 
+function barcodeMatches(code){
+  const upper = code.toUpperCase();
+  const sf = session.shortForm;
+  if(!sf) return true;
+  if(session.matchType === 'startswith') return upper.startsWith(sf);
+  if(session.matchType === 'position'){
+    const pos = session.position || 1;
+    return upper.substr(pos - 1, sf.length) === sf;
+  }
+  return upper.includes(sf);
+}
+
 function handleScan(raw){
   const code = (raw||'').trim();
   if(!code) return;
 
-  if(!code.toUpperCase().startsWith(session.shortForm)){
-    toast('Wrong product! Expected "' + session.shortForm + '" barcodes', 'err');
+  if(!barcodeMatches(code)){
+    toast('Wrong product! Expected barcode with "' + session.shortForm + '"', 'err');
     flashHint('Wrong product barcode!', 'err');
     return;
   }
