@@ -47,7 +47,6 @@
 <body>
 <div class="container">
 
-  <!-- ===== LOGIN / ROLE SELECT ===== -->
   <div id="screen-role">
     <h1>BTPL Final Test Report</h1>
     <div class="card">
@@ -66,7 +65,6 @@
     </div>
   </div>
 
-  <!-- ===== ADMIN PANEL ===== -->
   <div id="screen-admin" class="hidden">
     <div class="top-actions">
       <h1 style="margin:0">Admin Panel</h1>
@@ -84,9 +82,15 @@
       <input type="password" id="newPass" placeholder="New password">
       <button class="btn-secondary" onclick="doChangePassword()">Update Password</button>
     </div>
+    <div class="card">
+      <label>Document Control (Footer)</label>
+      <input type="text" id="settingFormatNo" placeholder="Format No e.g. BTPL-TES-FMT-001">
+      <input type="text" id="settingRevNo" placeholder="Revision No e.g. 02">
+      <input type="text" id="settingRevDate" placeholder="Revision Date e.g. 07-07-2026">
+      <button class="btn-secondary" onclick="saveSettings()">Save Document Control</button>
+    </div>
   </div>
 
-  <!-- ===== USER: SETUP ===== -->
   <div id="screen-setup" class="hidden">
     <div class="top-actions">
       <h1 style="margin:0">New Test Report</h1>
@@ -105,7 +109,6 @@
     </div>
   </div>
 
-  <!-- ===== USER: SCANNING ===== -->
   <div id="screen-scan" class="hidden">
     <div class="top-actions">
       <h1 style="margin:0">Scanning</h1>
@@ -131,7 +134,6 @@
     </div>
   </div>
 
-  <!-- ===== PREVIEW ===== -->
   <div id="screen-preview" class="hidden">
     <div class="top-actions">
       <h1 style="margin:0">Preview</h1>
@@ -168,14 +170,12 @@
 <div id="toast" class="toast hidden"></div>
 
 <script>
-/* ======== CONFIG ======== */
 const BACKEND_URL = 'https://script.google.com/macros/s/AKfycby5B_5crLWB_C8N8tnZHrmUh0uwSo6dz4gUgAd30WiWaFXvhruxsMz6io_wa6gGKI6N/exec';
 
 let PRODUCTS = [];
 let session = null;
 let adminPassword = null;
 
-/* ======== UTIL ======== */
 function toast(msg, type){
   const t = document.getElementById('toast');
   t.textContent = msg; t.className = 'toast ' + (type||'ok');
@@ -214,14 +214,37 @@ async function loadConfig(){
 }
 loadConfig();
 
-/* ======== ROLE SCREENS ======== */
 function backToRole(){ show('screen-role'); }
 function showAdminLogin(){ show('screen-adminLogin'); }
 async function doAdminLogin(){
   const pass = document.getElementById('adminPassInput').value;
   const r = await api('adminLogin', {password: pass});
-  if(r.success){ adminPassword = pass; renderAdmin(); show('screen-admin'); }
+  if(r.success){
+    adminPassword = pass;
+    renderAdmin();
+    loadSettingsIntoForm();
+    show('screen-admin');
+  }
   else toast('Wrong password', 'err');
+}
+async function loadSettingsIntoForm(){
+  try{
+    const res = await fetch(BACKEND_URL + '?action=getSettings');
+    const data = await res.json();
+    if(data.success){
+      document.getElementById('settingFormatNo').value = data.settings.formatNo || '';
+      document.getElementById('settingRevNo').value = data.settings.revNo || '';
+      document.getElementById('settingRevDate').value = data.settings.revDate || '';
+    }
+  }catch(e){}
+}
+async function saveSettings(){
+  const formatNo = document.getElementById('settingFormatNo').value.trim();
+  const revNo = document.getElementById('settingRevNo').value.trim();
+  const revDate = document.getElementById('settingRevDate').value.trim();
+  const r = await api('saveSettings', {password: adminPassword, formatNo, revNo, revDate});
+  if(r.success) toast('Document control saved');
+  else toast(r.error || 'Failed', 'err');
 }
 function goUser(){
   const sel = document.getElementById('productSelect');
@@ -232,7 +255,6 @@ function goUser(){
   show('screen-setup');
 }
 
-/* ======== ADMIN PANEL ======== */
 function renderAdmin(){
   const wrap = document.getElementById('prodList');
   wrap.innerHTML = '';
@@ -287,7 +309,6 @@ async function doChangePassword(){
   else toast(r.error || 'Failed', 'err');
 }
 
-/* ======== SESSION / SCANNING ======== */
 function startScanningSession(){
   const sel = document.getElementById('productSelect');
   const opt = sel.options[sel.selectedIndex];
@@ -393,7 +414,6 @@ function finishScanning(){
 }
 function backToScan(){ show('screen-scan'); focusScanInput(); }
 
-/* ======== PREVIEW ======== */
 function renderPreview(){
   document.getElementById('pv-product').innerText = session.product;
   document.getElementById('pv-date').innerText = session.date;
@@ -418,7 +438,6 @@ function renderPreview(){
   document.getElementById('pv-grid').innerHTML = html;
 }
 
-/* ======== SUBMIT ======== */
 async function submitReport(){
   const btn = document.getElementById('submitBtn');
   btn.disabled = true; btn.innerText = 'Saving...';
