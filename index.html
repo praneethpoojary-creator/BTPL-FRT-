@@ -169,8 +169,9 @@
 <script>
 /* ======== CONFIG ======== */
 const BACKEND_URL = 'https://script.google.com/macros/s/AKfycby5B_5crLWB_C8N8tnZHrmUh0uwSo6dz4gUgAd30WiWaFXvhruxsMz6io_wa6gGKI6N/exec';
+
 let PRODUCTS = [];
-let session = null; // {product, shortForm, opName, opCode, date, startTime, barcodes:[], nextSl:1}
+let session = null;
 let adminPassword = null;
 
 /* ======== UTIL ======== */
@@ -282,7 +283,7 @@ function startScanningSession(){
     date: document.getElementById('dateField').value,
     startTime: timeStr(),
     endTime: null,
-    barcodes: [],   // {slNo, barcode}
+    barcodes: [],
     scannedSet: new Set(),
     nextSl: 1
   };
@@ -320,7 +321,7 @@ function handleScan(raw){
   session.nextSl++;
   document.getElementById('okCount').innerText = session.barcodes.length;
   toast('Scanned OK: ' + code, 'ok');
-  flashHint('Scanned OK ✓ — next barcode...', 'ok');
+  flashHint('Scanned OK - next barcode...', 'ok');
 
   const list = document.getElementById('recentList');
   const div = document.createElement('div');
