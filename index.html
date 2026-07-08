@@ -221,6 +221,7 @@ async function doAdminLogin(){
   const r = await api('adminLogin', {password: pass});
   if(r.success){
     adminPassword = pass;
+    await loadConfig();
     renderAdmin();
     loadSettingsIntoForm();
     show('screen-admin');
@@ -246,13 +247,18 @@ async function saveSettings(){
   if(r.success) toast('Document control saved');
   else toast(r.error || 'Failed', 'err');
 }
-function goUser(){
+async function goUser(){
   const sel = document.getElementById('productSelect');
+  sel.innerHTML = '<option>Loading products...</option>';
+  show('screen-setup');
+  await loadConfig();
+  if(PRODUCTS.length === 0){
+    toast('No products found. Ask admin to add products.', 'err');
+  }
   sel.innerHTML = PRODUCTS.map(p=>`<option value="${p.name}" data-sf="${p.shortForm}" data-match="${p.matchType||'contains'}" data-pos="${p.position||''}">${p.name}</option>`).join('');
   document.getElementById('dateField').value = todayStr();
   document.getElementById('opName').value='';
   document.getElementById('opCode').value='';
-  show('screen-setup');
 }
 
 function renderAdmin(){
