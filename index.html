@@ -42,26 +42,44 @@
   .small{font-size:12px;color:var(--gray);}
   .top-actions{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
   .link{color:var(--blue);font-size:13px;cursor:pointer;}
+  .login-wrap{min-height:90vh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:24px 0;}
+  .login-logo{width:180px;margin-bottom:8px;}
+  .login-title{font-size:20px;font-weight:bold;text-align:center;margin:4px 0 2px;color:var(--dark);}
+  .login-subtitle{font-size:13px;color:var(--gray);text-align:center;margin-bottom:28px;}
+  .login-card{width:100%;max-width:340px;}
+  .login-btn{display:flex;align-items:center;justify-content:center;gap:10px;padding:16px;font-size:16px;border-radius:12px;}
+  .login-btn .icon{font-size:20px;}
+  .btn-primary.login-btn{box-shadow:0 4px 12px rgba(26,86,219,0.25);}
+  .btn-secondary.login-btn{background:#fff;border:1.5px solid var(--border);color:var(--dark);}
 </style>
 </head>
 <body>
 <div class="container">
 
   <div id="screen-role">
-    <h1>BTPL Final Test Report</h1>
-    <div class="card">
-      <button class="btn-primary" onclick="goUser()">Start Testing (User)</button>
-      <button class="btn-secondary" onclick="showAdminLogin()">Admin Login</button>
+    <div class="login-wrap">
+      <img class="login-logo" src="https://lh3.googleusercontent.com/d/1aTUzO9tyhwtQ9NtxZTOIYnKHWuQ14uDU" alt="Brevera Technologies">
+      <div class="login-title">Final Test Report</div>
+      <div class="login-subtitle">Quality Testing System</div>
+      <div class="login-card">
+        <button class="btn-primary login-btn" onclick="goUser()"><span class="icon">📋</span> Start Testing</button>
+        <button class="btn-secondary login-btn" onclick="showAdminLogin()"><span class="icon">🔐</span> Admin Login</button>
+      </div>
     </div>
   </div>
 
   <div id="screen-adminLogin" class="hidden">
-    <h1>Admin Login</h1>
-    <div class="card">
-      <label>Password</label>
-      <input type="password" id="adminPassInput">
-      <button class="btn-primary" onclick="doAdminLogin()">Login</button>
-      <button class="btn-secondary" onclick="backToRole()">Back</button>
+    <div class="login-wrap">
+      <img class="login-logo" src="https://lh3.googleusercontent.com/d/1aTUzO9tyhwtQ9NtxZTOIYnKHWuQ14uDU" alt="Brevera Technologies" style="width:130px;">
+      <div class="login-title">Admin Login</div>
+      <div class="login-card">
+        <div class="card">
+          <label>Password</label>
+          <input type="password" id="adminPassInput">
+          <button class="btn-primary" onclick="doAdminLogin()">Login</button>
+          <button class="btn-secondary" onclick="backToRole()">Back</button>
+        </div>
+      </div>
     </div>
   </div>
 
